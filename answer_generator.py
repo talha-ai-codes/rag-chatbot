@@ -15,7 +15,13 @@ def build_client(api_key: str, base_url: str | None = None) -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
-def generate_answer(client: OpenAI, model: str, question: str, chunks: list[dict]) -> str:
+def generate_answer(
+    client: OpenAI,
+    model: str,
+    question: str,
+    chunks: list[dict],
+    chat_history: list[dict] | None = None,
+) -> str:
     if not chunks:
         return "I don't have enough information in the documents to answer that."
 
@@ -24,19 +30,25 @@ def generate_answer(client: OpenAI, model: str, question: str, chunks: list[dict
     )
 
     system_prompt = (
-        "You are a helpful assistant that answers ONLY using the provided context. "
+        "You are a helpful assistant that answers using the provided context from documents. "
         "If the answer is not in the context, say clearly that you don't know — "
-        "never make up information. Keep answers concise."
+        "never make up information. Keep answers concise. You may refer back to "
+        "earlier parts of the conversation to understand follow-up questions."
     )
 
+    messages = [{"role": "system", "content": system_prompt}]
+
+    # Include recent conversation turns so follow-up questions make sense
+    if chat_history:
+        for turn in chat_history[-6:]:  # last 3 exchanges (user+assistant pairs)
+            messages.append({"role": turn["role"], "content": turn["content"]})
+
     user_prompt = f"Context:\n{context_text}\n\nQuestion: {question}"
+    messages.append({"role": "user", "content": user_prompt})
 
     response = client.chat.completions.create(
         model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        messages=messages,
         temperature=0.2,
     )
 
