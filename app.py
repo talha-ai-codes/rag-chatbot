@@ -1,12 +1,68 @@
 import os
 import tempfile
+from datetime import datetime
 import streamlit as st
 from rag_engine import RagEngine
 from answer_generator import build_client, generate_answer
 
-st.set_page_config(page_title="Bootcamp RAG Chatbot", page_icon="🤖")
-st.title("🤖 Ask My Documents")
-st.caption("A RAG chatbot that answers from the documents you provide.")
+st.set_page_config(page_title="Ask My Documents", page_icon="✨", layout="centered")
+
+# ---- Custom styling: dark theme + centered greeting, Claude-style ----
+st.markdown("""
+<style>
+    .stApp { background-color: #0d0d0f; }
+    .greeting-wrap {
+        text-align: center;
+        margin-top: 2.5rem;
+        margin-bottom: 2rem;
+    }
+    .greeting-emoji { font-size: 2.2rem; }
+    .greeting-text {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 2.4rem;
+        color: #f2ede7;
+        display: inline;
+        margin-left: 0.4rem;
+    }
+    .greeting-sub {
+        text-align: center;
+        color: #8a8a8f;
+        font-size: 0.95rem;
+        margin-bottom: 2rem;
+    }
+    div[data-testid="stChatInput"] {
+        border-radius: 16px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+def time_based_greeting(name: str) -> str:
+    hour = datetime.now().hour
+    if hour < 5:
+        period = "Night"
+    elif hour < 12:
+        period = "Morning"
+    elif hour < 17:
+        period = "Afternoon"
+    else:
+        period = "Evening"
+    return f"{period}, {name}"
+
+
+# ---- Set your display name here ----
+USER_NAME = st.secrets.get("DISPLAY_NAME", "Talha")
+
+if "messages" not in st.session_state or len(st.session_state.get("messages", [])) == 0:
+    st.markdown(
+        f'<div class="greeting-wrap"><span class="greeting-emoji">🌟</span>'
+        f'<span class="greeting-text">{time_based_greeting(USER_NAME)}</span></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="greeting-sub">Ask me anything about your documents \u2014 or general AI/ML/programming topics.</div>',
+        unsafe_allow_html=True,
+    )
 
 # ---- Load settings from Streamlit Secrets (set once by the app owner) ----
 # Falls back to manual entry if secrets aren't configured, so the app still
@@ -18,6 +74,7 @@ docs_folder = "./documents"
 
 with st.sidebar:
     st.header("Documents")
+
     doc_source = st.radio(
         "Which documents should I use?",
         ["Shared class documents", "Upload my own documents"],
