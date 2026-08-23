@@ -37,26 +37,29 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def time_based_greeting(name: str) -> str:
+def time_based_greeting(name: str) -> tuple[str, str]:
     hour = datetime.now().hour
     if hour < 5:
-        period = "Night"
+        period, emoji = "Night", "🌙"
     elif hour < 12:
-        period = "Morning"
+        period, emoji = "Morning", "☀️"
     elif hour < 17:
-        period = "Afternoon"
+        period, emoji = "Afternoon", "🌤️"
+    elif hour < 20:
+        period, emoji = "Evening", "🌇"
     else:
-        period = "Evening"
-    return f"{period}, {name}"
+        period, emoji = "Night", "🌙"
+    return f"{period}, {name}", emoji
 
 
 # ---- Set your display name here ----
 USER_NAME = st.secrets.get("DISPLAY_NAME", "Talha")
 
 if "messages" not in st.session_state or len(st.session_state.get("messages", [])) == 0:
+    greeting_text, greeting_emoji = time_based_greeting(USER_NAME)
     st.markdown(
-        f'<div class="greeting-wrap"><span class="greeting-emoji">🌟</span>'
-        f'<span class="greeting-text">{time_based_greeting(USER_NAME)}</span></div>',
+        f'<div class="greeting-wrap"><span class="greeting-emoji">{greeting_emoji}</span>'
+        f'<span class="greeting-text">{greeting_text}</span></div>',
         unsafe_allow_html=True,
     )
     st.markdown(
