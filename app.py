@@ -1,6 +1,7 @@
 import os
 import tempfile
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import streamlit as st
 from rag_engine import RagEngine
 from answer_generator import build_client, generate_answer
@@ -38,16 +39,14 @@ st.markdown("""
 
 
 def time_based_greeting(name: str) -> tuple[str, str]:
-    hour = datetime.now().hour
-    if hour < 5:
-        period, emoji = "Night", "🌙"
-    elif hour < 12:
+    hour = datetime.now(ZoneInfo("Asia/Karachi")).hour
+    if 5 <= hour < 12:
         period, emoji = "Morning", "☀️"
-    elif hour < 17:
+    elif 12 <= hour < 17:
         period, emoji = "Afternoon", "🌤️"
-    elif hour < 20:
+    elif 17 <= hour < 21:
         period, emoji = "Evening", "🌇"
-    else:
+    else:  # 9 PM to 5 AM
         period, emoji = "Night", "🌙"
     return f"{period}, {name}", emoji
 
