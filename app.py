@@ -4,7 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
 from rag_engine import RagEngine
-from answer_generator import build_client, generate_answer
+from answer_generator import build_client, generate_answer_stream
 
 st.set_page_config(page_title="Ask My Documents", page_icon="✨", layout="centered")
 
@@ -134,9 +134,32 @@ else:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-for msg in st.session_state.messages:
+
+def render_feedback(index: int):
+    """Show thumbs up/down under an assistant message and store the choice."""
+    msg = st.session_state.messages[index]
+    current = msg.get("feedback")
+    col1, col2, col_spacer = st.columns([0.06, 0.06, 0.88])
+
+    with col1:
+        if st.button("👍" if current != "up" else "✅", key=f"up_{index}"):
+            st.session_state.messages[index]["feedback"] = "up"
+            st.rerun()
+    with col2:
+        if st.button("👎" if current != "down" else "❌", key=f"down_{index}"):
+            st.session_state.messages[index]["feedback"] = "down"
+            st.rerun()
+
+
+for i, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg["role"] == "assistant":
+            if msg.get("sources"):
+                with st.expander("📄 Sources used"):
+                    for c in msg["sources"]:
+                        st.markdown(f"**{c['source']}**: {c['text'][:200]}...")
+            render_feedback(i)
 
 question = st.chat_input("Ask something about your documents...")
 
@@ -150,17 +173,28 @@ if question:
         st.markdown(question)
 
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
+        with st.spinner("Searching your documents..."):
             chunks = st.session_state.engine.retrieve(question)
             client = build_client(api_key, base_url or None)
-            answer = generate_answer(
+
+        # Stream the answer with a live typing effect
+        answer = st.write_stream(
+            generate_answer_stream(
                 client, model_name, question, chunks,
                 chat_history=st.session_state.messages[:-1],
             )
-            st.markdown(answer)
+        )
 
+        if chunks:
             with st.expander("📄 Sources used"):
                 for c in chunks:
                     st.markdown(f"**{c['source']}**: {c['text'][:200]}...")
 
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+        new_index = len(st.session_state.messages)
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": answer,
+            "sources": chunks,
+            "feedback": None,
+        })
+        render_feedback(new_index)
